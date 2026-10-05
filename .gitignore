@@ -1,0 +1,8 @@
+.kino-storage.json
+.kino-cookies.json
+.kino-secrets.json
+sdk/config.json
+*.pem
+node_modules/
+scratch/
+temp_template/

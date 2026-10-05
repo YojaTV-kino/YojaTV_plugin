@@ -1,0 +1,12 @@
+{
+  "id": "section-demo",
+  "name": "Sección demo",
+  "version": "1.0.0",
+  "apiVersion": 6,
+  "entry": "plugin.js",
+  "hosts": ["test-streams.mux.dev"],
+  "capabilities": ["home", "browse", "resolve"],
+  "color": "#3D5AFE",
+  "section": { "label": "Demo" },
+  "theme": { "accent": "#3D5AFE", "onAccent": "#FFFFFF", "background": "#101820", "surface": "#1A2733", "highlight": "#6B5A2A" }
+}

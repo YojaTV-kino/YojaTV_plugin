@@ -1,0 +1,20 @@
+{
+  "id": "settings-demo",
+  "name": "Ajustes demo",
+  "version": "1.0.0",
+  "apiVersion": 6,
+  "entry": "plugin.js",
+  "hosts": ["example.com"],
+  "capabilities": ["search", "resolve"],
+  "color": "#2E7D32",
+  "settings": [
+    { "key": "account", "label": "Tu cuenta", "type": "section", "hint": "Opcional: sin cuenta usas la sesión anónima" },
+    { "key": "email", "label": "Correo", "type": "text" },
+    { "key": "password", "label": "Contraseña", "type": "password" },
+    { "key": "linked", "label": "Estado", "type": "status" },
+    { "key": "slow", "label": "Lento", "type": "status" },
+    { "key": "test", "label": "Probar conexión", "type": "action" },
+    { "key": "logout", "label": "Cerrar sesión", "type": "action", "confirm": "¿Cerrar la sesión de esta cuenta?" },
+    { "key": "boom", "label": "Acción que falla", "type": "action" }
+  ]
+}
