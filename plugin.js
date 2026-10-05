@@ -29,7 +29,7 @@ function slugToTitle(slug) {
 const RESERVED_SLUGS = new Set([
   'directorio', 'horario', 'top', 'dash', 'comunidad',
   'aplicacion', 'buscar', 'historial', 'guardado', 'notificaciones',
-  'login', 'register', 'dashboard', 'tipo', 'genero'
+  'login', 'register', 'dashboard', 'tipo', 'genero', 'estrenos'
 ]);
 
 const ITEM_ID_RE = /^[A-Za-z0-9._~-]{1,128}$/;
@@ -38,7 +38,34 @@ function isValidSlug(s) {
   return typeof s === 'string' && ITEM_ID_RE.test(s) && !RESERVED_SLUGS.has(s);
 }
 
-function parseAnimeCards(html) {
+function parseAnimesJson(html) {
+  if (!html || typeof html !== 'string') return [];
+  const match = html.match(/var\s+animes\s*=\s*(\{[\s\S]*?\});\s*(?:var|\n|<)/);
+  if (!match) return [];
+  try {
+    const data = JSON.parse(match[1]);
+    const list = Array.isArray(data.data) ? data.data : [];
+    return list.map(x => {
+      const slug = (x.slug || '').trim();
+      if (!isValidSlug(slug)) return null;
+      const isMovie = (x.tipo && x.tipo.toLowerCase().includes('pel')) ||
+                      (x.type && x.type.toLowerCase().includes('movie')) ||
+                      slug.includes('pelicula');
+      return {
+        id: slug,
+        ref: slug,
+        title: cleanText(x.title || slugToTitle(slug)),
+        kind: isMovie ? 'movie' : 'series',
+        poster: x.image || null,
+        overview: cleanText(x.synopsis || '')
+      };
+    }).filter(Boolean);
+  } catch (e) {
+    return [];
+  }
+}
+
+function parseAnimeCardsHtml(html) {
   if (!html || typeof html !== 'string') return [];
   const items = [];
   const seen = new Set();
@@ -48,7 +75,7 @@ function parseAnimeCards(html) {
     const block = blocks[i];
 
     const imgMatch = block.match(/data-setbg="(https?:\/\/[^"]+)"/i) ||
-                     block.match(/src="(https:\/\/[^"]+)"/i);
+                     block.match(/src="(https?:\/\/[^"]+)"/i);
     const poster = imgMatch ? imgMatch[1] : null;
 
     const linkRe = /href="https:\/\/jkanime\.net\/([a-z0-9][a-z0-9-]{0,127})\/?"[^>]*>([\s\S]*?)<\/a>/gi;
@@ -103,55 +130,93 @@ export async function search(params) {
 
   if (!res.ok && res.status !== 301 && res.status !== 302) return [];
 
-  const items = parseAnimeCards(getText(res));
+  const html = getText(res);
+  let items = parseAnimesJson(html);
+  if (items.length === 0) {
+    items = parseAnimeCardsHtml(html);
+  }
   return items.slice(0, 60);
 }
 
 export async function home() {
   await kino.sleep(0);
 
-  const res = await kino.fetch(
-    'https://jkanime.net/',
-    { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } }
-  );
+  const [resHome, resDir, resMov, resAct] = await Promise.all([
+    kino.fetch('https://jkanime.net/', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } }),
+    kino.fetch('https://jkanime.net/directorio/1/', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } }),
+    kino.fetch('https://jkanime.net/directorio/1?tipo=pelicula', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } }),
+    kino.fetch('https://jkanime.net/directorio/1?genero=accion', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } })
+  ]);
 
-  if (!res.ok) return [];
-
-  const html = getText(res);
-  const latestItems = [];
-  const latestSeen = new Set();
-
-  const epRe = /href="https:\/\/jkanime\.net\/([a-z0-9][a-z0-9-]{0,127})\/(\d+)\/"[^>]*>/gi;
-  let em;
-  while ((em = epRe.exec(html)) !== null) {
-    const slug = em[1];
-    if (!isValidSlug(slug) || latestSeen.has(slug)) continue;
-    latestSeen.add(slug);
-    latestItems.push({
-      id: slug,
-      ref: slug,
-      title: slugToTitle(slug),
-      kind: 'series'
-    });
-  }
-
-  const popularItems = parseAnimeCards(html);
+  const htmlHome = resHome.ok ? getText(resHome) : '';
+  const htmlDir = resDir.ok ? getText(resDir) : '';
+  const htmlMov = resMov.ok ? getText(resMov) : '';
+  const htmlAct = resAct.ok ? getText(resAct) : '';
 
   const rows = [];
-  if (latestItems.length > 0) {
-    rows.push({
-      id: 'ultimos-episodios',
-      title: '🔥 ÚLTIMOS EPISODIOS',
-      items: latestItems.slice(0, 30)
-    });
+
+  // Row 1: Latest episodes
+  if (htmlHome) {
+    const latestItems = [];
+    const latestSeen = new Set();
+    const epRe = /href="https:\/\/jkanime\.net\/([a-z0-9][a-z0-9-]{0,127})\/(\d+)\/"[^>]*>/gi;
+    let em;
+    while ((em = epRe.exec(htmlHome)) !== null) {
+      const slug = em[1];
+      if (!isValidSlug(slug) || latestSeen.has(slug)) continue;
+      latestSeen.add(slug);
+      latestItems.push({
+        id: slug,
+        ref: slug,
+        title: slugToTitle(slug),
+        kind: 'series'
+      });
+    }
+    if (latestItems.length > 0) {
+      rows.push({
+        id: 'ultimos-episodios',
+        title: '🔥 ÚLTIMOS EPISODIOS',
+        items: latestItems.slice(0, 30)
+      });
+    }
   }
-  if (popularItems.length > 0) {
-    rows.push({
-      id: 'populares',
-      title: '⭐ ANIME POPULAR',
-      items: popularItems.slice(0, 30)
-    });
+
+  // Row 2: Series Directory
+  if (htmlDir) {
+    const seriesItems = parseAnimesJson(htmlDir);
+    if (seriesItems.length > 0) {
+      rows.push({
+        id: 'series-populares',
+        title: '⭐ SERIES Y ANIMES DESTACADOS',
+        items: seriesItems.slice(0, 30)
+      });
+    }
   }
+
+  // Row 3: Movies & OVAs
+  if (htmlMov) {
+    const movieItems = parseAnimesJson(htmlMov);
+    if (movieItems.length > 0) {
+      rows.push({
+        id: 'peliculas-ovas',
+        title: '🎬 PELÍCULAS Y ESPECIALES',
+        items: movieItems.slice(0, 30)
+      });
+    }
+  }
+
+  // Row 4: Action & Adventure
+  if (htmlAct) {
+    const actionItems = parseAnimesJson(htmlAct);
+    if (actionItems.length > 0) {
+      rows.push({
+        id: 'accion-aventura',
+        title: '💥 ACCIÓN Y AVENTURA',
+        items: actionItems.slice(0, 30)
+      });
+    }
+  }
+
   return rows;
 }
 
@@ -170,7 +235,13 @@ export async function browse(params) {
   );
 
   if (!res.ok) return { items: [], next: null };
-  const items = parseAnimeCards(getText(res)).slice(0, 60);
+  const html = getText(res);
+  let items = parseAnimesJson(html);
+  if (items.length === 0) {
+    items = parseAnimeCardsHtml(html);
+  }
+  items = items.slice(0, 60);
+
   return {
     items: items,
     next: items.length > 0 ? String(page + 1) : null
