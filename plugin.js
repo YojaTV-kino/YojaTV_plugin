@@ -228,6 +228,34 @@ export async function episodes(params) {
   return { episodes: list };
 }
 
+async function extractDirectMediafire(embedUrl) {
+  try {
+    const res = await kino.fetch(embedUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    if (!res.ok) return null;
+    const html = getText(res);
+    const m = html.match(/href="(https?:\/\/download[^"]+)"/i) || html.match(/aria-label="Download file"\s+href="([^"]+)"/i);
+    return m ? m[1] : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function extractDirectMp4upload(embedUrl) {
+  try {
+    const res = await kino.fetch(embedUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    });
+    if (!res.ok) return null;
+    const html = getText(res);
+    const m = html.match(/src:\s*"(https?:\/\/[^"]+\.mp4[^"]*)"/i) || html.match(/player\.src\("(https?:\/\/[^"]+)"\)/i);
+    return m ? m[1] : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 export async function resolve(params) {
   await kino.sleep(0);
   let ref = '';
@@ -264,6 +292,7 @@ export async function resolve(params) {
   }
 
   const streams = [];
+
   for (const s of serverList) {
     if (!s.remote) continue;
     let decoded = '';
@@ -273,9 +302,19 @@ export async function resolve(params) {
       continue;
     }
     if (!decoded || !decoded.startsWith('http')) continue;
+
+    const serverName = (s.server || 'Servidor').trim();
+    let directUrl = null;
+
+    if (decoded.includes('mediafire.com')) {
+      directUrl = await extractDirectMediafire(decoded);
+    } else if (decoded.includes('mp4upload.com')) {
+      directUrl = await extractDirectMp4upload(decoded);
+    }
+
     streams.push({
-      label: (s.server || 'Servidor') + (s.size ? ' (' + s.size + ')' : ''),
-      url: decoded.trim()
+      label: serverName + (s.size ? ' (' + s.size + ')' : ''),
+      url: directUrl || decoded.trim()
     });
   }
 
@@ -286,6 +325,6 @@ export async function resolve(params) {
 
   return {
     url: primary.url,
-    alternatives: alts.map(a => ({ label: a.label, ref: a.url }))
+    alternatives: alts.map(a => ({ label: a.label, url: a.url }))
   };
 }
