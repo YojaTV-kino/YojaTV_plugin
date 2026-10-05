@@ -1,16 +1,18 @@
 {
   "id": "yoja-tv-kino",
   "name": "Untitled Plugin",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "apiVersion": 5,
   "entry": "plugin.js",
-  "description": "Plugin de YojaTV para Kino TV. Catálogo de anime y contenido multimedia en español. Creado por JuandreXter, YojanderGaming y einer_bg.",
+  "description": "Plugin de YojaTV para Kino TV. Películas de cine en español latino, series y anime. Creado por JuandreXter, YojanderGaming y einer_bg.",
   "author": "JuandreXter, YojanderGaming, einer_bg",
   "homepage": "https://github.com/YojaTV-kino/YojaTV_plugin",
   "hosts": [
     "jkanime.net",
     "www.jkanime.net",
     "cdn.jkdesa.com",
+    "ver-peliculas-online.net",
+    "www.ver-peliculas-online.net",
     "mediafire.com",
     "www.mediafire.com",
     "mp4upload.com",
@@ -37,6 +39,6 @@
   "icon": "icon.png",
   "signature": {
     "authorKey": "c3caf0f9e51197553082904a2655d51e5afcca579a3048cdfbd8a97f7b2cf2c3",
-    "value": "b65e4cb42d30f1789e769a7e0cb5af84d63bcb7d5ba263452077d8e6379b00122ee562f4da75665877f6fd6730dadcf242b61dcbb2d9b021ca47074d478f9b0c"
+    "value": "1ba45a4c4b3c9a1aface96345fcc314881935951862c163d2646048df8229ab4800588badba1f134aedac64bc979883fd02449ba023f994be01d0e5d47458d07"
   }
 }
